@@ -58,6 +58,7 @@ def variable_summaries(var, name):
 
 with tf.name_scope('input'):
     # Shape [BS, TRIGRAM_D].
+    # Declare shape may cause program failures on some machines
     query_batch = tf.sparse_placeholder(tf.float32, name='QueryBatch')
     # Shape [BS, TRIGRAM_D]
     doc_batch = tf.sparse_placeholder(tf.float32, name='DocBatch')
