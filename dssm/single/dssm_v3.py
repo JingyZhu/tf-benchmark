@@ -58,9 +58,9 @@ def variable_summaries(var, name):
 
 with tf.name_scope('input'):
     # Shape [BS, TRIGRAM_D].
-    query_batch = tf.sparse_placeholder(tf.float32, shape=query_in_shape, name='QueryBatch')
+    query_batch = tf.sparse_placeholder(tf.float32, name='QueryBatch')
     # Shape [BS, TRIGRAM_D]
-    doc_batch = tf.sparse_placeholder(tf.float32, shape=doc_in_shape, name='DocBatch')
+    doc_batch = tf.sparse_placeholder(tf.float32, name='DocBatch')
 
 with tf.name_scope('L1'):
     l1_par_range = np.sqrt(6.0 / (TRIGRAM_D + L1_N))
