@@ -2,11 +2,11 @@ import numpy as np
 import pickle
 from scipy.sparse import coo_matrix
 
-query_test_data = coo_matrix((10240, 49284), dtype=np.int64)
-doc_test_data = coo_matrix((10240, 49284), dtype=np.int64)
+query_test_data = coo_matrix((10240, 49284))
+doc_test_data = coo_matrix((10240, 49284))
 
-doc_train_data = coo_matrix((2048000, 49284), dtype=np.int64)
-query_train_data = coo_matrix((2048000, 49284), dtype=np.int64)
+doc_train_data = coo_matrix((2048000, 49284))
+query_train_data = coo_matrix((2048000, 49284))
 
 qtd = open('query.test.pickle', 'wb+')
 dtd = open('doc.test.pickle', 'wb+')

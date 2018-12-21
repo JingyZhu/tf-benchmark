@@ -39,8 +39,8 @@ BS = 1024
 L1_N = 400
 L2_N = 120
 
-query_in_shape = np.array([BS, TRIGRAM_D], np.int64)
-doc_in_shape = np.array([BS, TRIGRAM_D], np.int64)
+query_in_shape = np.array([BS, TRIGRAM_D], dtype=np.int64)
+doc_in_shape = np.array([BS, TRIGRAM_D], dtype=np.int64)
 
 
 def variable_summaries(var, name):
@@ -149,11 +149,11 @@ def pull_batch(query_data, doc_data, batch_idx):
     # print(query_in.shape, doc_in.shape)
     query_in = tf.SparseTensorValue(
         np.transpose([np.array(query_in.row, dtype=np.int64), np.array(query_in.col, dtype=np.int64)]),
-        np.array(query_in.data, dtype=np.float),
+        np.array(query_in.data, dtype=np.float32),
         np.array(query_in.shape, dtype=np.int64))
     doc_in = tf.SparseTensorValue(
         np.transpose([np.array(doc_in.row, dtype=np.int64), np.array(doc_in.col, dtype=np.int64)]),
-        np.array(doc_in.data, dtype=np.float),
+        np.array(doc_in.data, dtype=np.float32),
         np.array(doc_in.shape, dtype=np.int64))
 
 
