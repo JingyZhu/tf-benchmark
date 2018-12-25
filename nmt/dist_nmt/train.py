@@ -461,7 +461,7 @@ def train(hparams, scope=None, target_session="", cluster=None):
     steps_per_external_eval = 5 * steps_per_eval
 
   # Create model
-  with tf.device(tf.train.replica_device_setter(worker_device="/job:worker/task:{}".format(FLAGS.task_index), cluster=cluster)):
+  with tf.device(tf.train.replica_device_setter(worker_device="/job:worker/task:{}".format(hparams.task_index), cluster=cluster)):
     model_creator = get_model_creator(hparams)
     train_model = model_helper.create_train_model(model_creator, hparams, scope, \
                                                   num_workers=hparams.num_train_workers,
