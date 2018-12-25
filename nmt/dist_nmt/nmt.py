@@ -318,6 +318,10 @@ def add_arguments(parser):
   parser.add_argument("--job_name", type=str, default="",
                       help="Either 'ps' or 'worker'")
   
+  parser.add_argument("--ps_hosts", type=str, default="",
+                      help="Comma-separated list of hostname:port pairs")
+  parser.add_argument("--worker_hosts", type=str, default="",
+                      help="Comma-separated list of hostname:port pairs")
   parser.add_argument("--task_index", type=int, default=0,
                       help="Index of task within a job")
 
