@@ -458,7 +458,7 @@ def train(hparams, scope=None, target_session="", server=None):
   task_index = hparams.task_index
 
   if not steps_per_external_eval:
-    steps_per_external_eval = 5 * steps_per_eval
+    steps_per_external_eval = 10 * steps_per_eval
 
   # Create model
   # with tf.device(tf.train.replica_device_setter(worker_device="/job:worker/task:{}".format(hparams.task_index), cluster=cluster)):
@@ -492,11 +492,12 @@ def train(hparams, scope=None, target_session="", server=None):
     is_chief=train_model.model.is_chief
     train_sess = tf.train.MonitoredTrainingSession(master=server.target, is_chief=is_chief, 
                                                    hooks=[train_model.model.hooks], 
-                                                   config=config_proto,
-                                                   checkpoint_dir=out_dir,
-                                                   save_summaries_steps=steps_per_stats)
-    loaded_train_model, global_step = model_helper.create_or_load_model(
-      train_model.model, model_dir, train_sess, "train")
+                                                   config=config_proto)
+                                                  #  checkpoint_dir=out_dir,
+                                                  #  save_summaries_steps=steps_per_stats)
+    loaded_train_model, global_step = train_model.model, train_model.model.global_step.eval(session=train_sess)
+    # loaded_train_model, global_step = model_helper.create_or_load_model(
+    #   train_model.model, model_dir, train_sess, "train")
   # train_sess = tf.Session(
   #   target=target_session, config=config_proto, graph=train_model.graph)
   eval_sess = tf.Session(
@@ -574,10 +575,10 @@ def train(hparams, scope=None, target_session="", server=None):
       add_info_summaries(summary_writer, global_step, info)
 
       # Save checkpoint
-      loaded_train_model.saver.save(
-          train_sess,
-          os.path.join(out_dir, "translate.ckpt"),
-          global_step=global_step)
+      # loaded_train_model.saver.save(
+      #     train_sess,
+      #     os.path.join(out_dir, "translate.ckpt"),
+      #     global_step=global_step)
 
       # Evaluate on dev/test
       run_sample_decode(infer_model, infer_sess,
@@ -585,15 +586,14 @@ def train(hparams, scope=None, target_session="", server=None):
                         sample_tgt_data)
       run_internal_eval(
           eval_model, eval_sess, model_dir, hparams, summary_writer)
-
     if global_step - last_external_eval_step >= steps_per_external_eval:
       last_external_eval_step = global_step
 
       # Save checkpoint
-      loaded_train_model.saver.save(
-          train_sess,
-          os.path.join(out_dir, "translate.ckpt"),
-          global_step=global_step)
+      # loaded_train_model.saver.save(
+      #     train_sess,
+      #     os.path.join(out_dir, "translate.ckpt"),
+      #     global_step=global_step)
       run_sample_decode(infer_model, infer_sess,
                         model_dir, hparams, summary_writer, sample_src_data,
                         sample_tgt_data)
