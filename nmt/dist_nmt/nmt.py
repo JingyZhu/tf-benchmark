@@ -705,7 +705,6 @@ def run_main(flags, default_hparams, train_fn, inference_fn, target_session=""):
     # Train
     train_fn(hparams, target_session=target_session, server=server)
 
-
 def main(unused_argv):
   default_hparams = create_hparams(FLAGS)
   train_fn = train.train

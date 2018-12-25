@@ -428,8 +428,6 @@ def before_train(loaded_train_model, train_model, train_sess, global_step,
   train_sess.run(
       train_model.iterator.initializer,
       feed_dict={train_model.skip_count_placeholder: skip_count})
-  with tf.Session() as sess:
-    sess.run(tf.global_variables_initializer())
   return stats, info, start_train_time
 
 
@@ -448,7 +446,7 @@ def get_model_creator(hparams):
   return model_creator
 
 
-def train(hparams, scope=None, target_session="", cluster=None, server=None):
+def train(hparams, scope=None, target_session="", server=None):
   """Train a translation model."""
   log_device_placement = hparams.log_device_placement
   out_dir = hparams.out_dir
@@ -493,18 +491,20 @@ def train(hparams, scope=None, target_session="", cluster=None, server=None):
   with train_model.graph.as_default():
     is_chief=train_model.model.is_chief
     train_sess = tf.train.MonitoredTrainingSession(master=server.target, is_chief=is_chief, 
-                                                     hooks=[train_model.model.hooks])
+                                                   hooks=[train_model.model.hooks], 
+                                                   config=config_proto,
+                                                   checkpoint_dir=out_dir,
+                                                   save_summaries_steps=steps_per_stats)
+    loaded_train_model, global_step = model_helper.create_or_load_model(
+      train_model.model, model_dir, train_sess, "train")
   # train_sess = tf.Session(
   #   target=target_session, config=config_proto, graph=train_model.graph)
   eval_sess = tf.Session(
     target=target_session, config=config_proto, graph=eval_model.graph)
   infer_sess = tf.Session(
     target=target_session, config=config_proto, graph=infer_model.graph)
-
-  with train_model.graph.as_default():
-    loaded_train_model, global_step = model_helper.create_or_load_model(
-      train_model.model, model_dir, train_sess, "train")
-
+  
+  # with train_model.graph.as_default():
   # Summary writer
   summary_writer = tf.summary.FileWriter(
     os.path.join(out_dir, summary_name), train_model.graph)
@@ -523,7 +523,7 @@ def train(hparams, scope=None, target_session="", cluster=None, server=None):
   # This is the training loop.
   stats, info, start_train_time = before_train(
     loaded_train_model, train_model, train_sess, global_step, hparams, log_f)
-  print("AHA: ", global_step)
+
   while global_step < num_train_steps:
     ### Run a step ###
     start_time = time.time()

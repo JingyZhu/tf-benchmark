@@ -153,7 +153,7 @@ class BaseModel(object):
     self.batch_size = tf.size(self.iterator.source_sequence_length)
 
     # Global step
-    self.global_step = tf.Variable(0, trainable=False)
+    self.global_step = tf.train.get_or_create_global_step()
 
     # Initializer
     self.random_seed = hparams.random_seed
