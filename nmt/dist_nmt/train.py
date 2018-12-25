@@ -371,7 +371,7 @@ def print_step_info(prefix, global_step, info, result_summary, log_f):
   """Print all info at the current global step."""
   utils.print_out(
       "%sstep %d lr %g step-time %.2fs wps %.2fK ppl %.2f gN %.2f %s, %s" %
-      (prefix, global_step, info["learning_rate"], info["avg_step_time"],
+      (prefix, global_step, info["learning_rate"], info["tot_step_time"],
        info["speed"], info["train_ppl"], info["avg_grad_norm"], result_summary,
        time.ctime()),
       log_f)
@@ -388,7 +388,7 @@ def add_info_summaries(summary_writer, global_step, info):
 def process_stats(stats, info, global_step, steps_per_stats, log_f):
   """Update info and check for overflow."""
   # Per-step info
-  info["avg_step_time"] = stats["step_time"] / steps_per_stats
+  info["tot_step_time"] = stats["step_time"]
   info["avg_grad_norm"] = stats["grad_norm"] / steps_per_stats
   info["avg_sequence_count"] = stats["sequence_count"] / steps_per_stats
   info["speed"] = stats["word_count"] / (1000 * stats["step_time"])
@@ -413,7 +413,7 @@ def before_train(loaded_train_model, train_model, train_sess, global_step,
   """Misc tasks to do before training."""
   stats = init_stats()
   info = {"train_ppl": 0.0, "speed": 0.0,
-          "avg_step_time": 0.0,
+          "tot_step_time": 0.0,
           "avg_grad_norm": 0.0,
           "avg_sequence_count": 0.0,
           "learning_rate": loaded_train_model.learning_rate.eval(
@@ -447,7 +447,7 @@ def get_model_creator(hparams):
   return model_creator
 
 
-def train(hparams, scope=None, target_session=""):
+def train(hparams, scope=None, target_session="", cluster=None):
   """Train a translation model."""
   log_device_placement = hparams.log_device_placement
   out_dir = hparams.out_dir
@@ -461,10 +461,13 @@ def train(hparams, scope=None, target_session=""):
     steps_per_external_eval = 5 * steps_per_eval
 
   # Create model
-  model_creator = get_model_creator(hparams)
-  train_model = model_helper.create_train_model(model_creator, hparams, scope)
-  eval_model = model_helper.create_eval_model(model_creator, hparams, scope)
-  infer_model = model_helper.create_infer_model(model_creator, hparams, scope)
+  with tf.device(tf.train.replica_device_setter(worker_device="/job:worker/task:{}".format(FLAGS.task_index), cluster=cluster)):
+    model_creator = get_model_creator(hparams)
+    train_model = model_helper.create_train_model(model_creator, hparams, scope, \
+                                                  num_workers=hparams.num_train_workers,
+                                                  jobid=hparams.task_index)
+    eval_model = model_helper.create_eval_model(model_creator, hparams, scope)
+    infer_model = model_helper.create_infer_model(model_creator, hparams, scope)
 
   # Preload data for sample decoding.
   dev_src_file = "%s.%s" % (hparams.dev_prefix, hparams.src)

@@ -34,6 +34,8 @@ from .utils import vocab_utils
 utils.check_tensorflow_version()
 
 FLAGS = None
+server = None
+cluster = None
 
 INFERENCE_KEYS = ["src_max_len_infer", "tgt_max_len_infer", "subword_option",
                   "infer_batch_size", "beam_width",
@@ -311,6 +313,13 @@ def add_arguments(parser):
                       help="number of inter_op_parallelism_threads")
   parser.add_argument("--num_intra_threads", type=int, default=0,
                       help="number of intra_op_parallelism_threads")
+  
+  # Used for distributed GNMT
+  parser.add_argument("--job_name", type=str, default="",
+                      help="Either 'ps' or 'worker'")
+  
+  parser.add_argument("--task_index", type=int, default=0,
+                      help="Index of task within a job")
 
 
 def create_hparams(flags):
@@ -399,6 +408,7 @@ def create_hparams(flags):
       num_intra_threads=flags.num_intra_threads,
       num_inter_threads=flags.num_inter_threads,
       num_train_workers=flags.num_train_workers,
+      task_index=flags.task_index,
   )
 
 
@@ -703,4 +713,11 @@ if __name__ == "__main__":
   nmt_parser = argparse.ArgumentParser()
   add_arguments(nmt_parser)
   FLAGS, unparsed = nmt_parser.parse_known_args()
-  tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
+  worker_hosts = FLAGS.worker_hosts.split(",")
+  ps_hosts = FLAGS.ps_hosts.split(",")
+  cluster = tf.train.ClusterSpec({"worker": worker_hosts, "ps": ps_hosts})
+  server = tf.train.Server(cluster, job_name=FLAGS.job_name, task_index=FLAGS.task_index)
+  if FLAGS.job_name == "ps":
+    server.join()
+  elif FLAGS.job_name == "worker":
+    tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)

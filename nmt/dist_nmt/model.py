@@ -206,6 +206,8 @@ class BaseModel(object):
       else:
         raise ValueError("Unknown optimizer type %s" % hparams.optimizer)
 
+      opt = tf.train.SyncReplicasOptimizer(opt, replicas_to_aggregate=hparams.num_train_workers,
+                                            total_num_replicas=hparams.num_train_workers, name="GNMT")
       # Gradients
       gradients = tf.gradients(
           self.train_loss,

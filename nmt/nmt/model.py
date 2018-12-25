@@ -205,7 +205,6 @@ class BaseModel(object):
         opt = tf.train.AdamOptimizer(self.learning_rate)
       else:
         raise ValueError("Unknown optimizer type %s" % hparams.optimizer)
-
       # Gradients
       gradients = tf.gradients(
           self.train_loss,

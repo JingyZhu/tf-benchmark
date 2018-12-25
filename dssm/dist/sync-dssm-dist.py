@@ -53,10 +53,6 @@ L1_N = 400
 L2_N = 120
 GAMA = 20
 
-def sleeep():
-    print("It's time to sleep!")
-    time.sleep(5)
-
 def pull_batch(query_data, doc_data, batch_idx):
     query_in = query_data[batch_idx * BS:(batch_idx + 1) * BS, :]
     doc_in = doc_data[batch_idx * BS:(batch_idx + 1) * BS, :]
@@ -123,11 +119,11 @@ elif FLAGS.job_name == "worker":
         # quit()
         with tf.name_scope('input'):
             # Shape [BS, TRIGRAM_D].
-            query_batch = tf.sparse_placeholder(tf.float32, shape=query_in_shape, name='QueryBatch')
+            query_batch = tf.sparse_placeholder(tf.float32, name='QueryBatch')
             # Shape [BS, TRIGRAM_D]
-            doc_batch = tf.sparse_placeholder(tf.float32, shape=doc_in_shape, name='DocBatch')
+            doc_batch = tf.sparse_placeholder(tf.float32, name='DocBatch')
 
-            dense_cols = tf.placeholder(tf.int64, shape=None, name='ActualCols')
+            dense_cols = tf.placeholder(tf.int64, name='ActualCols')
 
         with tf.name_scope('L1'):
             # Hidden layer 1 [input: cols, output: 300]
