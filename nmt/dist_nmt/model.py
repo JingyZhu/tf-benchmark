@@ -221,7 +221,8 @@ class BaseModel(object):
 
       self.update = opt.apply_gradients(
           zip(clipped_grads, params), global_step=self.global_step)
-
+      self.is_chief = (hparams.task_index == 0)
+      self.hooks = opt.make_session_run_hook(self.is_chief)
       # Summary
       self.train_summary = self._get_train_summary()
     elif self.mode == tf.contrib.learn.ModeKeys.INFER:

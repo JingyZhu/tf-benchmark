@@ -428,7 +428,8 @@ def before_train(loaded_train_model, train_model, train_sess, global_step,
   train_sess.run(
       train_model.iterator.initializer,
       feed_dict={train_model.skip_count_placeholder: skip_count})
-
+  with tf.Session() as sess:
+    sess.run(tf.global_variables_initializer())
   return stats, info, start_train_time
 
 
@@ -447,7 +448,7 @@ def get_model_creator(hparams):
   return model_creator
 
 
-def train(hparams, scope=None, target_session="", cluster=None):
+def train(hparams, scope=None, target_session="", cluster=None, server=None):
   """Train a translation model."""
   log_device_placement = hparams.log_device_placement
   out_dir = hparams.out_dir
@@ -456,18 +457,19 @@ def train(hparams, scope=None, target_session="", cluster=None):
   steps_per_external_eval = hparams.steps_per_external_eval
   steps_per_eval = 10 * steps_per_stats
   avg_ckpts = hparams.avg_ckpts
+  task_index = hparams.task_index
 
   if not steps_per_external_eval:
     steps_per_external_eval = 5 * steps_per_eval
 
   # Create model
-  with tf.device(tf.train.replica_device_setter(worker_device="/job:worker/task:{}".format(hparams.task_index), cluster=cluster)):
-    model_creator = get_model_creator(hparams)
-    train_model = model_helper.create_train_model(model_creator, hparams, scope, \
-                                                  num_workers=hparams.num_train_workers,
-                                                  jobid=hparams.task_index)
-    eval_model = model_helper.create_eval_model(model_creator, hparams, scope)
-    infer_model = model_helper.create_infer_model(model_creator, hparams, scope)
+  # with tf.device(tf.train.replica_device_setter(worker_device="/job:worker/task:{}".format(hparams.task_index), cluster=cluster)):
+  model_creator = get_model_creator(hparams)
+  train_model = model_helper.create_train_model(model_creator, hparams, scope, \
+                                                num_workers=hparams.num_train_workers,
+                                                jobid=task_index)
+  eval_model = model_helper.create_eval_model(model_creator, hparams, scope)
+  infer_model = model_helper.create_infer_model(model_creator, hparams, scope)
 
   # Preload data for sample decoding.
   dev_src_file = "%s.%s" % (hparams.dev_prefix, hparams.src)
@@ -485,30 +487,34 @@ def train(hparams, scope=None, target_session="", cluster=None):
 
   # TensorFlow model
   config_proto = utils.get_config_proto(
-      log_device_placement=log_device_placement,
-      num_intra_threads=hparams.num_intra_threads,
-      num_inter_threads=hparams.num_inter_threads)
-  train_sess = tf.Session(
-      target=target_session, config=config_proto, graph=train_model.graph)
+    log_device_placement=log_device_placement,
+    num_intra_threads=hparams.num_intra_threads,
+    num_inter_threads=hparams.num_inter_threads)
+  with train_model.graph.as_default():
+    is_chief=train_model.model.is_chief
+    train_sess = tf.train.MonitoredTrainingSession(master=server.target, is_chief=is_chief, 
+                                                     hooks=[train_model.model.hooks])
+  # train_sess = tf.Session(
+  #   target=target_session, config=config_proto, graph=train_model.graph)
   eval_sess = tf.Session(
-      target=target_session, config=config_proto, graph=eval_model.graph)
+    target=target_session, config=config_proto, graph=eval_model.graph)
   infer_sess = tf.Session(
-      target=target_session, config=config_proto, graph=infer_model.graph)
+    target=target_session, config=config_proto, graph=infer_model.graph)
 
   with train_model.graph.as_default():
     loaded_train_model, global_step = model_helper.create_or_load_model(
-        train_model.model, model_dir, train_sess, "train")
+      train_model.model, model_dir, train_sess, "train")
 
   # Summary writer
   summary_writer = tf.summary.FileWriter(
-      os.path.join(out_dir, summary_name), train_model.graph)
+    os.path.join(out_dir, summary_name), train_model.graph)
 
-  # First evaluation
+	# First evaluation
   run_full_eval(
-      model_dir, infer_model, infer_sess,
-      eval_model, eval_sess, hparams,
-      summary_writer, sample_src_data,
-      sample_tgt_data, avg_ckpts)
+    model_dir, infer_model, infer_sess,
+    eval_model, eval_sess, hparams,
+    summary_writer, sample_src_data,
+    sample_tgt_data, avg_ckpts)
 
   last_stats_step = global_step
   last_eval_step = global_step
@@ -516,7 +522,8 @@ def train(hparams, scope=None, target_session="", cluster=None):
 
   # This is the training loop.
   stats, info, start_train_time = before_train(
-      loaded_train_model, train_model, train_sess, global_step, hparams, log_f)
+    loaded_train_model, train_model, train_sess, global_step, hparams, log_f)
+  print("AHA: ", global_step)
   while global_step < num_train_steps:
     ### Run a step ###
     start_time = time.time()

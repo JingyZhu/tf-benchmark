@@ -703,7 +703,7 @@ def run_main(flags, default_hparams, train_fn, inference_fn, target_session=""):
         utils.print_out("  %s: %.1f" % (metric, score))
   else:
     # Train
-    train_fn(hparams, target_session=target_session)
+    train_fn(hparams, target_session=target_session, server=server)
 
 
 def main(unused_argv):
@@ -717,9 +717,9 @@ if __name__ == "__main__":
   nmt_parser = argparse.ArgumentParser()
   add_arguments(nmt_parser)
   FLAGS, unparsed = nmt_parser.parse_known_args()
-  worker_hosts = FLAGS.worker_hosts.split(",")
-  ps_hosts = FLAGS.ps_hosts.split(",")
-  cluster = tf.train.ClusterSpec({"worker": worker_hosts, "ps": ps_hosts})
+  FLAGS.worker_hosts = FLAGS.worker_hosts.split(",")
+  FLAGS.ps_hosts = FLAGS.ps_hosts.split(",")
+  cluster = tf.train.ClusterSpec({"worker": FLAGS.worker_hosts, "ps": FLAGS.ps_hosts})
   server = tf.train.Server(cluster, job_name=FLAGS.job_name, task_index=FLAGS.task_index)
   if FLAGS.job_name == "ps":
     server.join()
